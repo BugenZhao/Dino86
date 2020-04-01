@@ -1,3 +1,7 @@
+;
+; Created by Bugen Zhao on 2020/4/1.
+;
+
         cpu 8086
         org 0x7c00
         jmp init
