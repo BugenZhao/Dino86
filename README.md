@@ -1,5 +1,7 @@
 # Dino86
-🦕 A simple copy of Chrome Dino game in boot sector, compatible with 8086/8088.
+> *All in 510 bytes.*
+
+?? A simple copy of Chrome Dino game in boot sector, compatible with 8086/8088.
 
 ![screenshot](img/screenshot.png)
 
@@ -15,6 +17,10 @@
         sudo apt install qemu
         sudo apt install nasm
         ```
+- Clone this repository:
+    ```bash
+    git clone https://github.com/BugenZhao/Dino86.git
+    ```
 - Build and run directly by executing 
     ```bash
     make run
