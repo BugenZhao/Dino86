@@ -3,15 +3,19 @@
         jmp init
 
 TITLE:  db "Dino86 by Bugen"
+height: db 20, 18, 17, 17, 15, 15, 14, 14, 15, 15, 17, 17, 18, 20
 
 VRAM:   equ 0xb800
 cd:     equ 0x0fa2
 score:  equ 0x0fa4
-dinoh:  equ 0x0fa6
+jstate: equ 0x0fa6
 
 drawdino:                       ; Draw dino if ax=1, clear if ax=0
         push ax                 ; Save arg
-        mov ax, [dinoh]
+        mov bx, height
+        mov di, [jstate]
+        mov al, [cs:bx+di]      ; Get height by jstate
+        mov ah, 0
         mov bx, 0xa0
         mul bx
         add ax, 10
@@ -63,7 +67,7 @@ tick:
         push dx
         mov ah, 0x0             ; Read clock tick into dx:bx
         int 0x1a
-.again:
+ .again:
         push dx                 ; Save dx
         mov ah, 0x0             ; Read again
         int 0x1a
@@ -146,18 +150,18 @@ init:
         mov es, ax              ; Set ds,es to vram
         mov word [cd], 80
         mov word [score], 0
-        mov word [dinoh], 20
+        mov word [jstate], 0
 
 initscenery:
-        mov cx, 80
+        mov cx, 80              ; Do not show cactus at the beginning
  .isloop:
         push cx
-        call scroll
+        call scroll             ; Show scenery
         pop cx
         loop .isloop
  .dino:
         mov ax, 1
-        call drawdino
+        call drawdino           ; Draw dino
 
 title:
         mov di, 0x00e2          ; Center of row 1
@@ -169,7 +173,7 @@ title:
         stosw                   ; Move ax to ds:si
         inc si
         call tick
-        call tick
+        call tick               ; Wait some ticks
         loop .tloop
         
 ready:
@@ -184,28 +188,42 @@ ready:
 game:
         mov ah, 0x1
         int 0x16
-        jz .gaming              ; No key pressed -> jump
+        jz .nokey              ; No key pressed
         xor ax, ax
         int 0x16
         cmp al, 0x1b            ; Escape?
-        je reboot               ; Escape -> restart
- .dinomove:
-        
-        
+        je quit                 ; Escape -> restart  
+ .key:                          ; Some key pressed
+        mov ax, [jstate]
+        jmp .incjstate
+ .nokey:                        ; No key pressed
+        mov ax, [jstate]
+        cmp ax, 0x0             ; Are we jumping?
+        je .gaming              ; No, pass
+ .incjstate:
+        inc ax
+        cmp ax, 14              ; Have we jumped down to ground?
+        jl .gaming
+ .ground:
+        mov ax, 0x0             ; Restore jstate to zero
+ 
  .gaming:
+        push ax                 ; Save current jstate
         call tick
         mov ax, 0
-        call drawdino
+        call drawdino           ; Clear old dino
         call scroll
+        pop ax                  ; Restore new jstate
+        mov [jstate], ax
         mov ax, 1
-        call drawdino
-        call dispscore
+        call drawdino           ; Draw new dino
+        call dispscore          ; Display score
         jmp game
 
-reboot:
-        int 0x20
+quit:
+        int 0x20                ; Back to DOS
         mov ax, 0x3
-        out 0x92, ax
+        out 0x92, ax            ; ...or reboot
 
 
 bootable:
