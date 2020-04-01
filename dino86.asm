@@ -4,7 +4,7 @@
 
 TITLE:  db "Dino86 by Bugen"
 DEAD:   db "GAME OVER"
-height: db 20, 18, 17, 17, 15, 15, 14, 14, 15, 15, 17, 17, 18, 20
+height: db 20, 18, 17, 17, 15, 15, 14, 15, 15, 17, 17, 18, 20
 
 VRAM:   equ 0xb800
 cd:     equ 0x0fa2
@@ -134,7 +134,16 @@ scroll:
  .addcd:
         in al, 0x40
         and ax, 0x000f
-        or ax, 0x10             ; Generate a random cd in [16,32)
+        mov bx, [score]
+        cmp bx, 1000
+        jg .veryhard
+        cmp bx, 500
+        jg .hard
+        add al, 0x8
+ .hard:
+        add al, 0x4
+ .veryhard:
+        add al, 0x4
         mov [cd], ax
  .scrret:
         ret
@@ -174,7 +183,6 @@ title:
         mov al, byte [cs:si]    ; Get title char
         stosw                   ; Move ax to ds:si
         inc si
-        call tick
         call tick               ; Wait some ticks
         loop .tloop
         
@@ -204,7 +212,7 @@ game:
         je .gaming              ; No, pass
  .incjstate:
         inc ax
-        cmp ax, 14              ; Have we jumped down to ground?
+        cmp ax, 13              ; Have we jumped down to ground?
         jl .gaming
  .ground:
         mov ax, 0x0             ; Restore jstate to zero
@@ -225,7 +233,7 @@ game:
         jmp game
 
 dead:
-        mov di, 0xa0*12+0x00e6  ; Center of row 13
+        mov di, 0xa0*12+0x00e8  ; Center of row 13
         mov si, DEAD
         mov cx, 9               ; Loop count = DEAD.len
         mov ah, 0x0c            ; DEAD color
@@ -236,11 +244,11 @@ dead:
         call tick               ; Wait some ticks
         loop .tloop
  .wait:
-        mov cx, 100
+        mov cx, 128
  .wloop:
         call tick
         loop .wloop
-        
+
 quit:
         int 0x20                ; Back to DOS
         mov ax, 0x3

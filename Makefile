@@ -1,7 +1,7 @@
 all: image
 
 binary: dino86.asm
-	nasm -f bin dino86.asm -o dino86.bin -l dino86.lst -O3 -Wall
+	nasm -f bin dino86.asm -o dino86.bin -l dino86.lst -O2 -Wall
 
 image: binary
 	dd if=./dino86.bin of=./dino86.img bs=512 count=1
