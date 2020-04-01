@@ -2,8 +2,34 @@
         org 0x7c00
         jmp init
 
+TITLE:  db "Dino86 by Bugen"
+
 VRAM:   equ 0xb800
 cd:     equ 0x0fa2
+score:  equ 0x0fa4
+dinoh:  equ 0x0fa6
+
+
+dispscore:
+        inc word [score]
+        mov ax, [score]         ; Store score in ax
+        mov di, 0xa0*2-4        ; Where to show: row 2, col -2
+        std                     ; Set dflag
+ .sloop:
+        mov dx, 0
+        mov cx, 10
+        div cx                  ; q in ax, r in dx
+        push ax                 ; Save quotient
+        mov ax, dx
+        add ax, 0x0700|'0'
+        stosw                   ; Show and dec di by 2
+        pop ax
+        cmp ax, 0
+        je .return
+        jmp .sloop
+ .return:
+        cld                     ; Clear dflag
+        ret
 
 tick:
         push ax
@@ -44,8 +70,7 @@ scroll:
         jnz .scrrow
  .testcactus:
         mov ax, [cd]
-        dec ax
-        mov [cd], ax            ; CD--
+        dec word [cd]           ; CD--
         cmp ax, 0
         jge .scrret             ; CD >= 0 -> Cactus is too close!
         in al, 0x40
@@ -72,7 +97,7 @@ scroll:
         sub di, 0xa0
         mov word [di], 0x0200|0xdb
         mov word [di+0x2], 0x0200|0xdb
-        mov word [di+0x4], 0x0200|0xbe
+        mov word [di+0x4], 0x0200|0xbc
         jmp .addcd
  .addcd:
         in al, 0x40
@@ -84,7 +109,7 @@ scroll:
 
 
 init:
-        mov ax, 0x2             ; Set text mode
+        mov ax, 0x2             ; Set text mode and clear
         int 0x10
         mov ah, 0x1
         mov cx, 0x2607          ; Set invisible cursor
@@ -94,6 +119,7 @@ init:
         mov ds, ax
         mov es, ax              ; Set ds,es to vram
         mov word [cd], 80
+        mov word [score], 0
 
 initscenery:
         mov cx, 80
@@ -102,11 +128,17 @@ initscenery:
         call scroll
         pop cx
         loop .isloop
+ .dino:
+        mov di, 0xa0*20+10
+        mov word [di], 0x0fdb
+        mov word [di-0x2], 0x0f00|'-'
+        mov word [di-0xa0+2], 0x0f00|0xdc
+        mov word [di+0xa0], 0x0f00|0xba
 
 title:
         mov di, 0x00e2          ; Center of row 1
         mov si, TITLE
-        mov cx, 16              ; Loop count = TITLE.len
+        mov cx, 15              ; Loop count = TITLE.len
         mov ah, 0x0f            ; Title color
  .tloop:
         mov al, byte [cs:si]    ; Get title char
@@ -114,21 +146,39 @@ title:
         inc si
         call tick
         call tick
-        call tick
         loop .tloop
         
-s:
+ready:
+        mov ah, 0x1             ; Check if key pressed
+        int 0x16
+        pushf
+        xor ax, ax              ; Wait for a key
+        int 0x16
+        popf
+        jnz ready               ; No key pressed -> not ready
+
+game:
+        mov ah, 0x1
+        int 0x16
+        jz .gaming              ; No key pressed -> jump
+        xor ax, ax
+        int 0x16
+        cmp al, 0x1b            ; Escape?
+        je reboot               ; Escape -> restart
+ .dinomove:
+        
+        
+ .gaming:
         call tick
         call scroll
-        jmp s
+        call dispscore
+        jmp game
 
-spin:
-        hlt
-        jmp spin
+reboot:
+        int 0x20
+        mov ax, 0x3
+        out 0x92, ax
 
-
-
-TITLE:  db "Dino 86 by Bugen"
 
 bootable:
         times 510-($-$$) db  0

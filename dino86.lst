@@ -1,136 +1,186 @@
      1                                          cpu 8086
      2                                          org 0x7c00
-     3 00000000 E9A200                          jmp init
+     3 00000000 E9D500                          jmp init
      4                                  
-     5                                  VRAM:   equ 0xb800
-     6                                  cd:     equ 0x0fa2
-     7                                  
-     8                                  tick:
-     9 00000003 50                              push ax
-    10 00000004 53                              push bx
-    11 00000005 51                              push cx
-    12 00000006 52                              push dx
-    13 00000007 B400                            mov ah, 0x0             ; Read clock tick into dx:bx
-    14 00000009 CD1A                            int 0x1a
-    15                                  .again:
-    16 0000000B 52                              push dx                 ; Save dx
-    17 0000000C B400                            mov ah, 0x0             ; Read again
-    18 0000000E CD1A                            int 0x1a
-    19 00000010 5B                              pop bx
-    20 00000011 39D3                            cmp bx, dx              ; Changed?
-    21 00000013 74F6                            je .again               ; Nope, tick again
-    22 00000015 5A                              pop dx
-    23 00000016 59                              pop cx
-    24 00000017 5B                              pop bx
-    25 00000018 58                              pop ax
-    26 00000019 C3                              ret
-    27                                  
-    28                                  
-    29                                  scroll:
-    30 0000001A BF4001                          mov di, 0xa0*2          ; Row 3, col 1
-    31 0000001D BE4201                          mov si, 0xa0*2+2        ; Row 3, col 2
-    32                                   .scrrow:
-    33 00000020 B94F00                          mov cx, 79
-    34 00000023 F3A5                            repz movsw              ; Loop: mov words from ds:si to es:di
-    35 00000025 81FFC00D                        cmp di, 0xa0*22
-    36 00000029 B8200F                          mov ax, 0x0f00|' '      ; Prepare to clear col 80
-    37 0000002C 7C03                            jl .fillblank
-    38                                   .fillblock:
-    39 0000002E B8DB07                          mov ax, 0x0700|0xdb     ; Prepare to fill a block
-    40                                   .fillblank:   
-    41 00000031 AB                              stosw                   ; Fill blank or block, add di by 2
-    42 00000032 83C602                          add si, 0x2             
-    43 00000035 81FEA20F                        cmp si, 0xa0*25+2       ; All 25 rows scrolled?
-    44 00000039 75E5                            jnz .scrrow
-    45                                   .testcactus:
-    46 0000003B A1A20F                          mov ax, [cd]
-    47 0000003E 48                              dec ax
-    48 0000003F A3A20F                          mov [cd], ax            ; CD--
-    49 00000042 83F800                          cmp ax, 0
-    50 00000045 7D5D                            jge .scrret             ; CD >= 0 -> Cactus is too close!
-    51 00000047 E440                            in al, 0x40
-    52 00000049 83E007                          and ax, 0x0007          ; Generate a random 'MODE' in [0,7]
-    53 0000004C 3C04                            cmp al, 0x4
-    54 0000004E 7C54                            jl .scrret              ; 0,1,2,3 -> Do not draw
-    55 00000050 BFB80D                          mov di, 0xa0*22-8
-    56 00000053 3C06                            cmp al, 0x6
-    57 00000055 7C20                            jl .drawcactusB         ; 4,5 -> MODE B
-    58                                                                  ; 6,7 -> MODE A
-    59                                   .drawcactusA:                  ; MODE A
-    60 00000057 C705DB02                        mov word [di], 0x0200|0xdb
-    61 0000005B 81EFA000                        sub di, 0xa0
-    62 0000005F C705DB02                        mov word [di], 0x0200|0xdb
-    63 00000063 C745FED402                      mov word [di-0x2], 0x0200|0xd4
-    64 00000068 C74502BE02                      mov word [di+0x2], 0x0200|0xbe
-    65 0000006D 81EFA000                        sub di, 0xa0
-    66 00000071 C705DB02                        mov word [di], 0x0200|0xdb
-    67 00000075 EB22                            jmp .addcd
-    68                                   .drawcactusB:                  ; MODE B
-    69 00000077 C705DB02                        mov word [di], 0x0200|0xdb
-    70 0000007B C74502DB02                      mov word [di+0x2], 0x0200|0xdb
-    71 00000080 C745FEC802                      mov word [di-0x2], 0x0200|0xc8
-    72 00000085 81EFA000                        sub di, 0xa0
-    73 00000089 C705DB02                        mov word [di], 0x0200|0xdb
-    74 0000008D C74502DB02                      mov word [di+0x2], 0x0200|0xdb
-    75 00000092 C74504BE02                      mov word [di+0x4], 0x0200|0xbe
-    76 00000097 EB00                            jmp .addcd
-    77                                   .addcd:
-    78 00000099 E440                            in al, 0x40
-    79 0000009B 83E00F                          and ax, 0x000f
-    80 0000009E 83C810                          or ax, 0x10             ; Generate a random cd in [16,32)
-    81 000000A1 A3A20F                          mov [cd], ax
-    82                                   .scrret:
-    83 000000A4 C3                              ret
-    84                                  
-    85                                  
-    86                                  init:
-    87 000000A5 B80200                          mov ax, 0x2             ; Set text mode
-    88 000000A8 CD10                            int 0x10
-    89 000000AA B401                            mov ah, 0x1
-    90 000000AC B90726                          mov cx, 0x2607          ; Set invisible cursor
-    91 000000AF CD10                            int 0x10
-    92 000000B1 FC                              cld                     ; Clear dflag
-    93 000000B2 B800B8                          mov ax, VRAM
-    94 000000B5 8ED8                            mov ds, ax
-    95 000000B7 8EC0                            mov es, ax              ; Set ds,es to vram
-    96 000000B9 C706A20F5000                    mov word [cd], 80
-    97                                  
-    98                                  initscenery:
-    99 000000BF B95000                          mov cx, 80
-   100                                   .isloop:
-   101 000000C2 51                              push cx
-   102 000000C3 E854FF                          call scroll
-   103 000000C6 59                              pop cx
-   104 000000C7 E2F9                            loop .isloop
-   105                                  
-   106                                  title:
-   107 000000C9 BFE200                          mov di, 0x00e2          ; Center of row 1
-   108 000000CC BE[EF00]                        mov si, TITLE
-   109 000000CF B91000                          mov cx, 16              ; Loop count = TITLE.len
-   110 000000D2 B40F                            mov ah, 0x0f            ; Title color
-   111                                   .tloop:
-   112 000000D4 2E8A04                          mov al, byte [cs:si]    ; Get title char
-   113 000000D7 AB                              stosw                   ; Move ax to ds:si
-   114 000000D8 46                              inc si
-   115 000000D9 E827FF                          call tick
-   116 000000DC E824FF                          call tick
-   117 000000DF E821FF                          call tick
-   118 000000E2 E2F0                            loop .tloop
-   119                                          
-   120                                  s:
-   121 000000E4 E81CFF                          call tick
-   122 000000E7 E830FF                          call scroll
-   123 000000EA EBF8                            jmp s
-   124                                  
-   125                                  spin:
-   126 000000EC F4                              hlt
-   127 000000ED EBFD                            jmp spin
-   128                                  
-   129                                  
-   130                                  
-   131 000000EF 44696E6F2038362062-     TITLE:  db "Dino 86 by Bugen"
-   131 000000F8 7920427567656E     
-   132                                  
-   133                                  bootable:
-   134 000000FF 00<rept>                        times 510-($-$$) db  0
-   135 000001FE 55AA                            dw 0xaa55
+     5 00000003 44696E6F3836206279-     TITLE:  db "Dino86 by Bugen"
+     5 0000000C 20427567656E       
+     6                                  
+     7                                  VRAM:   equ 0xb800
+     8                                  cd:     equ 0x0fa2
+     9                                  score:  equ 0x0fa4
+    10                                  dinoh:  equ 0x0fa6
+    11                                  
+    12                                  
+    13                                  dispscore:
+    14 00000012 FF06A40F                        inc word [score]
+    15 00000016 A1A40F                          mov ax, [score]         ; Store score in ax
+    16 00000019 BF3C01                          mov di, 0xa0*2-4        ; Where to show: row 2, col -2
+    17 0000001C FD                              std                     ; Set dflag
+    18                                   .sloop:
+    19 0000001D BA0000                          mov dx, 0
+    20 00000020 B90A00                          mov cx, 10
+    21 00000023 F7F1                            div cx                  ; q in ax, r in dx
+    22 00000025 50                              push ax                 ; Save quotient
+    23 00000026 89D0                            mov ax, dx
+    24 00000028 053007                          add ax, 0x0700|'0'
+    25 0000002B AB                              stosw                   ; Show and dec di by 2
+    26 0000002C 58                              pop ax
+    27 0000002D 83F800                          cmp ax, 0
+    28 00000030 7402                            je .return
+    29 00000032 EBE9                            jmp .sloop
+    30                                   .return:
+    31 00000034 FC                              cld                     ; Clear dflag
+    32 00000035 C3                              ret
+    33                                  
+    34                                  tick:
+    35 00000036 50                              push ax
+    36 00000037 53                              push bx
+    37 00000038 51                              push cx
+    38 00000039 52                              push dx
+    39 0000003A B400                            mov ah, 0x0             ; Read clock tick into dx:bx
+    40 0000003C CD1A                            int 0x1a
+    41                                  .again:
+    42 0000003E 52                              push dx                 ; Save dx
+    43 0000003F B400                            mov ah, 0x0             ; Read again
+    44 00000041 CD1A                            int 0x1a
+    45 00000043 5B                              pop bx
+    46 00000044 39D3                            cmp bx, dx              ; Changed?
+    47 00000046 74F6                            je .again               ; Nope, tick again
+    48 00000048 5A                              pop dx
+    49 00000049 59                              pop cx
+    50 0000004A 5B                              pop bx
+    51 0000004B 58                              pop ax
+    52 0000004C C3                              ret
+    53                                  
+    54                                  
+    55                                  scroll:
+    56 0000004D BF4001                          mov di, 0xa0*2          ; Row 3, col 1
+    57 00000050 BE4201                          mov si, 0xa0*2+2        ; Row 3, col 2
+    58                                   .scrrow:
+    59 00000053 B94F00                          mov cx, 79
+    60 00000056 F3A5                            repz movsw              ; Loop: mov words from ds:si to es:di
+    61 00000058 81FFC00D                        cmp di, 0xa0*22
+    62 0000005C B8200F                          mov ax, 0x0f00|' '      ; Prepare to clear col 80
+    63 0000005F 7C03                            jl .fillblank
+    64                                   .fillblock:
+    65 00000061 B8DB07                          mov ax, 0x0700|0xdb     ; Prepare to fill a block
+    66                                   .fillblank:   
+    67 00000064 AB                              stosw                   ; Fill blank or block, add di by 2
+    68 00000065 83C602                          add si, 0x2             
+    69 00000068 81FEA20F                        cmp si, 0xa0*25+2       ; All 25 rows scrolled?
+    70 0000006C 75E5                            jnz .scrrow
+    71                                   .testcactus:
+    72 0000006E A1A20F                          mov ax, [cd]
+    73 00000071 FF0EA20F                        dec word [cd]           ; CD--
+    74 00000075 83F800                          cmp ax, 0
+    75 00000078 7D5D                            jge .scrret             ; CD >= 0 -> Cactus is too close!
+    76 0000007A E440                            in al, 0x40
+    77 0000007C 83E007                          and ax, 0x0007          ; Generate a random 'MODE' in [0,7]
+    78 0000007F 3C04                            cmp al, 0x4
+    79 00000081 7C54                            jl .scrret              ; 0,1,2,3 -> Do not draw
+    80 00000083 BFB80D                          mov di, 0xa0*22-8
+    81 00000086 3C06                            cmp al, 0x6
+    82 00000088 7C20                            jl .drawcactusB         ; 4,5 -> MODE B
+    83                                                                  ; 6,7 -> MODE A
+    84                                   .drawcactusA:                  ; MODE A
+    85 0000008A C705DB02                        mov word [di], 0x0200|0xdb
+    86 0000008E 81EFA000                        sub di, 0xa0
+    87 00000092 C705DB02                        mov word [di], 0x0200|0xdb
+    88 00000096 C745FED402                      mov word [di-0x2], 0x0200|0xd4
+    89 0000009B C74502BE02                      mov word [di+0x2], 0x0200|0xbe
+    90 000000A0 81EFA000                        sub di, 0xa0
+    91 000000A4 C705DB02                        mov word [di], 0x0200|0xdb
+    92 000000A8 EB22                            jmp .addcd
+    93                                   .drawcactusB:                  ; MODE B
+    94 000000AA C705DB02                        mov word [di], 0x0200|0xdb
+    95 000000AE C74502DB02                      mov word [di+0x2], 0x0200|0xdb
+    96 000000B3 C745FEC802                      mov word [di-0x2], 0x0200|0xc8
+    97 000000B8 81EFA000                        sub di, 0xa0
+    98 000000BC C705DB02                        mov word [di], 0x0200|0xdb
+    99 000000C0 C74502DB02                      mov word [di+0x2], 0x0200|0xdb
+   100 000000C5 C74504BC02                      mov word [di+0x4], 0x0200|0xbc
+   101 000000CA EB00                            jmp .addcd
+   102                                   .addcd:
+   103 000000CC E440                            in al, 0x40
+   104 000000CE 83E00F                          and ax, 0x000f
+   105 000000D1 83C810                          or ax, 0x10             ; Generate a random cd in [16,32)
+   106 000000D4 A3A20F                          mov [cd], ax
+   107                                   .scrret:
+   108 000000D7 C3                              ret
+   109                                  
+   110                                  
+   111                                  init:
+   112 000000D8 B80200                          mov ax, 0x2             ; Set text mode and clear
+   113 000000DB CD10                            int 0x10
+   114 000000DD B401                            mov ah, 0x1
+   115 000000DF B90726                          mov cx, 0x2607          ; Set invisible cursor
+   116 000000E2 CD10                            int 0x10
+   117 000000E4 FC                              cld                     ; Clear dflag
+   118 000000E5 B800B8                          mov ax, VRAM
+   119 000000E8 8ED8                            mov ds, ax
+   120 000000EA 8EC0                            mov es, ax              ; Set ds,es to vram
+   121 000000EC C706A20F5000                    mov word [cd], 80
+   122 000000F2 C706A40F0000                    mov word [score], 0
+   123                                  
+   124                                  initscenery:
+   125 000000F8 B95000                          mov cx, 80
+   126                                   .isloop:
+   127 000000FB 51                              push cx
+   128 000000FC E84EFF                          call scroll
+   129 000000FF 59                              pop cx
+   130 00000100 E2F9                            loop .isloop
+   131                                   .dino:
+   132 00000102 BF8A0C                          mov di, 0xa0*20+10
+   133 00000105 C705DB0F                        mov word [di], 0x0fdb
+   134 00000109 C745FE2D0F                      mov word [di-0x2], 0x0f00|'-'
+   135 0000010E C78562FFDC0F                    mov word [di-0xa0+2], 0x0f00|0xdc
+   136 00000114 C785A000BA0F                    mov word [di+0xa0], 0x0f00|0xba
+   137                                  
+   138                                  title:
+   139 0000011A BFE200                          mov di, 0x00e2          ; Center of row 1
+   140 0000011D BE[0300]                        mov si, TITLE
+   141 00000120 B90F00                          mov cx, 15              ; Loop count = TITLE.len
+   142 00000123 B40F                            mov ah, 0x0f            ; Title color
+   143                                   .tloop:
+   144 00000125 2E8A04                          mov al, byte [cs:si]    ; Get title char
+   145 00000128 AB                              stosw                   ; Move ax to ds:si
+   146 00000129 46                              inc si
+   147 0000012A E809FF                          call tick
+   148 0000012D E806FF                          call tick
+   149 00000130 E2F3                            loop .tloop
+   150                                          
+   151                                  ready:
+   152 00000132 B401                            mov ah, 0x1             ; Check if key pressed
+   153 00000134 CD16                            int 0x16
+   154 00000136 9C                              pushf
+   155 00000137 31C0                            xor ax, ax              ; Wait for a key
+   156 00000139 CD16                            int 0x16
+   157 0000013B 9D                              popf
+   158 0000013C 75F4                            jnz ready               ; No key pressed -> not ready
+   159                                  
+   160                                  game:
+   161 0000013E B401                            mov ah, 0x1
+   162 00000140 CD16                            int 0x16
+   163 00000142 7408                            jz .gaming              ; No key pressed -> jump
+   164 00000144 31C0                            xor ax, ax
+   165 00000146 CD16                            int 0x16
+   166 00000148 3C1B                            cmp al, 0x1b            ; Escape?
+   167 0000014A 740B                            je reboot               ; Escape -> restart
+   168                                   .dinomove:
+   169                                          
+   170                                          
+   171                                   .gaming:
+   172 0000014C E8E7FE                          call tick
+   173 0000014F E8FBFE                          call scroll
+   174 00000152 E8BDFE                          call dispscore
+   175 00000155 EBE7                            jmp game
+   176                                  
+   177                                  reboot:
+   178 00000157 CD20                            int 0x20
+   179 00000159 B80300                          mov ax, 0x3
+   180 0000015C E792                            out 0x92, ax
+   181                                  
+   182                                  
+   183                                  bootable:
+   184 0000015E 00<rept>                        times 510-($-$$) db  0
+   185 000001FE 55AA                            dw 0xaa55
