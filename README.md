@@ -1,7 +1,7 @@
 # Dino86
 > *All in 510 bytes.*
 
-?? A simple copy of Chrome Dino game in boot sector, compatible with 8086/8088.
+🦕 A simple copy of Chrome Dino game in **boot sector**, compatible with 8086 / 8088.
 
 ![screenshot](img/screenshot.png)
 
