@@ -3,6 +3,7 @@
         jmp init
 
 TITLE:  db "Dino86 by Bugen"
+DEAD:   db "GAME OVER"
 height: db 20, 18, 17, 17, 15, 15, 14, 14, 15, 15, 17, 17, 18, 20
 
 VRAM:   equ 0xb800
@@ -24,6 +25,7 @@ drawdino:                       ; Draw dino if ax=1, clear if ax=0
         test ax, ax
         jz .clear
  .draw:
+        mov ax, [di+0xa0]       ; What are under our dino's feet? Save it!
         mov word [di], 0x0fdb
         mov word [di-0x2], 0x0f00|'\'
         mov word [di-0xa0+2], 0x0f00|0xdc
@@ -188,7 +190,7 @@ ready:
 game:
         mov ah, 0x1
         int 0x16
-        jz .nokey              ; No key pressed
+        jz .nokey               ; No key pressed
         xor ax, ax
         int 0x16
         cmp al, 0x1b            ; Escape?
@@ -217,9 +219,28 @@ game:
         mov [jstate], ax
         mov ax, 1
         call drawdino           ; Draw new dino
+        cmp al, ' '
+        jne dead                ; OUCH! CACTUS!
         call dispscore          ; Display score
         jmp game
 
+dead:
+        mov di, 0xa0*12+0x00e6  ; Center of row 13
+        mov si, DEAD
+        mov cx, 9               ; Loop count = DEAD.len
+        mov ah, 0x0c            ; DEAD color
+ .tloop:
+        mov al, byte [cs:si]    ; Get DEAD char
+        stosw                   ; Move ax to ds:si
+        inc si
+        call tick               ; Wait some ticks
+        loop .tloop
+ .wait:
+        mov cx, 100
+ .wloop:
+        call tick
+        loop .wloop
+        
 quit:
         int 0x20                ; Back to DOS
         mov ax, 0x3
