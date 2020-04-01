@@ -3,12 +3,16 @@
 ;
 
         cpu 8086
+%ifdef BOOTSECTOR
         org 0x7c00
+%else
+        org 0x0100
+%endif
         jmp init
 
 TITLE:  db "Dino86 by Bugen"
 DEAD:   db "GAME OVER"
-height: db 20, 18, 17, 17, 15, 15, 14, 15, 15, 17, 17, 18, 20
+height: db 20, 18, 17, 16, 15, 15, 14, 15, 15, 16, 17, 18, 20
 
 VRAM:   equ 0xb800
 cd:     equ 0x0fa2
@@ -254,8 +258,12 @@ dead:
         loop .wloop
 
 quit:
+%ifdef BOOTSECTOR
         mov ax, 0x3
         out 0x92, ax            ; Reboot
+%else
+        int 20h
+%endif
 
 
 bootable:

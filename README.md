@@ -3,7 +3,19 @@
 
 🦕 A simple copy of Chrome Dino game in **boot sector**, compatible with 8086 / 8088.
 
-![screenshot](img/screenshot.png)
+
+
+- Gaming on boot sector
+
+![Gaming on boot sector](img/boot.png)
+
+- Gaming on Windows 3.1 / DOS
+
+![Gaming on Windows 3.1 / DOS](img/win.png)
+
+- Gaming on an online JavaScript x86 emulator
+
+![Game online](img/online.png)
 
 ## Build and Run
 - Play online at https://bugenzhao.com/dino86/ ( emulator by [copy/v86](https://github.com/copy/v86) ), or...
