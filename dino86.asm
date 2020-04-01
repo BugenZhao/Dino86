@@ -9,6 +9,30 @@ cd:     equ 0x0fa2
 score:  equ 0x0fa4
 dinoh:  equ 0x0fa6
 
+drawdino:                       ; Draw dino if ax=1, clear if ax=0
+        push ax                 ; Save arg
+        mov ax, [dinoh]
+        mov bx, 0xa0
+        mul bx
+        add ax, 10
+        mov di, ax              ; Get new dino pos
+        pop ax                  ; Restore arg
+        test ax, ax
+        jz .clear
+ .draw:
+        mov word [di], 0x0fdb
+        mov word [di-0x2], 0x0f00|'\'
+        mov word [di-0xa0+2], 0x0f00|0xdc
+        mov word [di+0xa0], 0x0f00|0xba
+        ret
+ .clear:
+        mov ax, 0x0700|' '
+        mov word [di], ax
+        mov word [di-0x2], ax
+        mov word [di-0xa0+2], ax
+        mov word [di+0xa0], ax
+        ret
+
 
 dispscore:
         inc word [score]
@@ -30,6 +54,7 @@ dispscore:
  .return:
         cld                     ; Clear dflag
         ret
+
 
 tick:
         push ax
@@ -79,24 +104,25 @@ scroll:
         jl .scrret              ; 0,1,2,3 -> Do not draw
         mov di, 0xa0*22-8
         cmp al, 0x6
+        mov ax, 0x0200|0xdb     ; Cache block char
         jl .drawcactusB         ; 4,5 -> MODE B
                                 ; 6,7 -> MODE A
  .drawcactusA:                  ; MODE A
-        mov word [di], 0x0200|0xdb
+        mov word [di], ax
         sub di, 0xa0
-        mov word [di], 0x0200|0xdb
+        mov word [di], ax
         mov word [di-0x2], 0x0200|0xd4
         mov word [di+0x2], 0x0200|0xbe
         sub di, 0xa0
-        mov word [di], 0x0200|0xdb
+        mov word [di], ax
         jmp .addcd
  .drawcactusB:                  ; MODE B
-        mov word [di], 0x0200|0xdb
-        mov word [di+0x2], 0x0200|0xdb
+        mov word [di], ax
+        mov word [di+0x2], ax
         mov word [di-0x2], 0x0200|0xc8
         sub di, 0xa0
-        mov word [di], 0x0200|0xdb
-        mov word [di+0x2], 0x0200|0xdb
+        mov word [di], ax
+        mov word [di+0x2], ax
         mov word [di+0x4], 0x0200|0xbc
         jmp .addcd
  .addcd:
@@ -120,6 +146,7 @@ init:
         mov es, ax              ; Set ds,es to vram
         mov word [cd], 80
         mov word [score], 0
+        mov word [dinoh], 20
 
 initscenery:
         mov cx, 80
@@ -129,11 +156,8 @@ initscenery:
         pop cx
         loop .isloop
  .dino:
-        mov di, 0xa0*20+10
-        mov word [di], 0x0fdb
-        mov word [di-0x2], 0x0f00|'-'
-        mov word [di-0xa0+2], 0x0f00|0xdc
-        mov word [di+0xa0], 0x0f00|0xba
+        mov ax, 1
+        call drawdino
 
 title:
         mov di, 0x00e2          ; Center of row 1
@@ -170,7 +194,11 @@ game:
         
  .gaming:
         call tick
+        mov ax, 0
+        call drawdino
         call scroll
+        mov ax, 1
+        call drawdino
         call dispscore
         jmp game
 
