@@ -254,9 +254,8 @@ dead:
         loop .wloop
 
 quit:
-        int 0x20                ; Back to DOS
         mov ax, 0x3
-        out 0x92, ax            ; ...or reboot
+        out 0x92, ax            ; Reboot
 
 
 bootable:
