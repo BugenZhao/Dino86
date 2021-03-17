@@ -1,0 +1,20 @@
+name: Deploy
+on: push
+
+jobs:
+  main:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install nasm
+        run: sudo apt install nasm
+      - name: Build
+        run: make all
+      - name: Copy
+        run: cp dino86.img public/dino86.img
+      - name: Deploy
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./public/
+          cname: dino.bugenzhao.com
