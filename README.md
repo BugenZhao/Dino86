@@ -18,7 +18,7 @@
 ![Game online](img/online.png)
 
 ## Build and Run
-- Play online at https://bugenzhao.com/dino86/ ( emulator by [copy/v86](https://github.com/copy/v86) ), or...
+- Play online at http://dino.bugenzhao.com ( emulator by [copy/v86](https://github.com/copy/v86) ), or...
 - Make sure you have `qemu` and `nasm` installed on your computer. Otherwise,
     - on macOS with Homebrew:
         ```bash
